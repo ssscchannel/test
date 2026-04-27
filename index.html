@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>晟自然測驗中心</title>
+    <style>
+        /* --- Sci-Fi Theme Variables --- */
+        :root {
+            --bg-main: #0a0a14; /* 更深的太空黑 */
+            --panel-bg: rgba(16, 24, 48, 0.7); /* 半透明面板 */
+            --neon-blue: #00f3ff; /* 電光藍 */
+            --neon-pink: #ff0099; /* 霓虹粉 */
+            --text-bright: #ffffff;
+            --text-dim: #8a9ab5;
+            --gold: #ffd700;
+            
+            /* 光暈效果標準化 */
+            --glow-blue: 0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.2);
+            --glow-pink: 0 0 10px rgba(255, 0, 153, 0.5), 0 0 20px rgba(255, 0, 153, 0.2);
+            --border-glow: 1px solid rgba(0, 243, 255, 0.3);
+        }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-main);
+            /* 科幻網格背景 */
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.1) 1px, transparent 1px),
+                radial-gradient(circle at 50% 50%, #1a1a3a 0%, var(--bg-main) 80%);
+            background-size: 40px 40px, 40px 40px, 100% 100%;
+            color: var(--text-bright);
+            height: 100vh; overflow: hidden;
+        }
+
+        /* --- Common Sci-Fi Elements --- */
+        h2, .panel-title span {
+            text-shadow: 0 0 8px var(--neon-blue);
+            letter-spacing: 1px;
+        }
+        
+        /* --- Login Overlay (Holographic Terminal) --- */
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 20, 0.95); z-index: 9999;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            transition: opacity 0.5s;
+            backdrop-filter: blur(5px); /* 毛玻璃效果 */
+        }
+        #login-overlay.hidden { opacity: 0; pointer-events: none; }
+
+        .login-box {
+            text-align: center; width: 320px;
+            background: var(--panel-bg); padding: 40px;
+            border-radius: 15px; 
+            border: var(--border-glow);
+            box-shadow: var(--glow-blue), inset 0 0 30px rgba(0,0,0,0.5);
+            position: relative; overflow: hidden;
+        }
+        /* 掃描線特效 */
+        .login-box::after {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 50%;
+            background: linear-gradient(to bottom, transparent, rgba(0, 243, 255, 0.1), transparent);
+            animation: scanline 4s linear infinite; pointer-events: none;
+        }
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(400%); } }
+
+        .login-input {
+            width: 100%; padding: 15px; margin: 15px 0;
+            background: rgba(0,0,0,0.3); 
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue); border-radius: 5px; font-size: 1.2rem; text-align: center;
+            box-sizing: border-box; outline: none;
+            text-shadow: 0 0 5px var(--neon-blue);
+            transition: 0.3s;
+        }
+        .login-input:focus { box-shadow: var(--glow-blue); }
+        .login-input[readonly] { border-color: #555; color: #aaa; text-shadow: none; background: rgba(0,0,0,0.6); }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+
+        .login-btn {
+            width: 100%; padding: 15px; margin-top: 10px;
+            background: transparent; color: var(--neon-pink);
+            border: 2px solid var(--neon-pink); border-radius: 5px;
+            font-size: 1.1rem; cursor: pointer; font-weight: bold;
+            text-shadow: 0 0 5px var(--neon-pink); box-shadow: inset 0 0 10px rgba(255,0,153,0.3);
+            transition: 0.3s;
+        }
+        .login-btn:hover:not(:disabled) { background: var(--neon-pink); color: white; box-shadow: var(--glow-pink); }
+        .login-btn:disabled { opacity: 0.5; cursor: not-allowed; border-color: #555; color: #555; box-shadow: none; text-shadow: none;}
+
+        /* --- Screen System --- */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column;
+            overflow-y: auto; padding: 20px; box-sizing: border-box;
+        }
+        .screen.active { display: flex; }
+
+        /* --- Home Dashboard --- */
+        .home-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; padding-bottom: 15px; 
+            border-bottom: var(--border-glow);
+        }
+        .header-left { display: flex; align-items: center; gap: 15px; }
+        .logo-img { height: 50px; width: auto; border-radius: 8px; border: 1px solid var(--neon-blue); box-shadow: var(--glow-blue); }
+        
+        .user-info { font-size: 1.2rem; font-weight: bold; color: var(--neon-blue); text-shadow: 0 0 5px rgba(0, 243, 255, 0.5); }
+        .user-detail { font-size: 0.9rem; color: var(--text-dim); }
+        
+        .logout-btn {
+            background: transparent; border: 1px solid var(--text-dim);
+            color: var(--text-dim); padding: 5px 15px; border-radius: 20px;
+            cursor: pointer; font-size: 0.9rem; transition: 0.3s;
+        }
+        .logout-btn:hover { border-color: var(--neon-pink); color: var(--neon-pink); box-shadow: var(--glow-pink); }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+            flex: 1; min-height: 0;
+        }
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                grid-auto-rows: min-content; } }
+
+        /* 修改面板設定，確保容器穩定 */
+        .panel {
+            background: var(--panel-bg); 
+            border-radius: 15px; 
+            padding: 15px;
+            display: flex; 
+            flex-direction: column;
+            border: var(--border-glow); 
+            box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.05);
+            overflow: hidden; 
+            backdrop-filter: blur(3px);
+            /* 確保在 Grid 中不會因為內容過少而縮小 */
+            min-height: 320px; 
+        }
+
+        .panel-title {
+            font-size: 1.1rem; color: var(--neon-blue); margin-bottom: 15px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .scroll-area { 
+            overflow-y: auto; 
+            height: 250px !important; 
+            flex: none !important; 
+            box-sizing: border-box;
+            position: relative;
+            scrollbar-width: none; 
+            -ms-overflow-style: none; 
+        }
+
+        .scroll-area::-webkit-scrollbar { 
+            display: none; 
+        }
+        
+        .rank-row, .history-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px; border-bottom: 1px solid rgba(0, 243, 255, 0.1);
+            font-size: 0.95rem; transition: background 0.2s;
+        }
+        .rank-row:hover, .history-row:hover { background: rgba(0, 243, 255, 0.1); }
+        .rank-row:last-child, .history-row:last-child { border-bottom: none; }
+        
+        .rank-badge {
+            /* 這裡統一設定一個固定的寬度 (例如 45px) 
+            確保右側的文字資訊能完美垂直對齊，不會因為星星大小而左右偏移 */
+            width: 45px; 
+            display: inline-flex; 
+            justify-content: center;
+            align-items: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        .rank-shape {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            position: relative;
+            z-index: 1;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .rank-star {
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            color: #000;
+        }
+        .rank-star span {
+            /* 核心細節：將數字微調下移 10% 才會看起來端正 */
+            transform: translateY(10%); 
+        }
+        .rank-1 .rank-shape {
+            width: 40px; height: 40px; font-size: 1.1rem;
+            background: var(--gold);
+            filter: drop-shadow(0 0 8px var(--gold)); 
+            animation: starPulse 2s infinite;
+        }
+        .rank-2 .rank-shape {
+            width: 34px; height: 34px; font-size: 0.95rem;
+            background: #e0e0e0;
+            filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.8));
+        }
+        .rank-3 .rank-shape {
+            width: 28px; height: 28px; font-size: 0.8rem;
+            background: #cd7f32;
+            filter: drop-shadow(0 0 4px #cd7f32);
+        }
+        .rank-other .rank-shape {
+            width: 20px; height: 20px; font-size: 0.7rem;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-dim);
+            border-radius: 50%;
+            border: 1px solid rgba(0, 243, 255, 0.2);
+        }
+       @keyframes starPulse {
+            0% { transform: scale(1); filter: drop-shadow(0 0 8px var(--gold)) brightness(1); }
+            50% { transform: scale(1.15); filter: drop-shadow(0 0 15px var(--gold)) brightness(1.2); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 8px var(--gold)) brightness(1); }
+        }
+
+        .score-val { color: var(--neon-pink); font-weight: bold; text-shadow: 0 0 5px var(--neon-pink); }
+        .meta-info { font-size: 0.8rem; color: var(--text-dim); }
+
+        /* Main Action Button (Neon Style) */
+        .action-area {
+            margin-top: 20px; text-align: center;
+        }
+        .big-start-btn {
+            background: transparent;
+            color: var(--neon-blue); border: 2px solid var(--neon-blue);
+            padding: 15px 60px; font-size: 1.3rem; border-radius: 50px; cursor: pointer;
+            box-shadow: var(--glow-blue), inset 0 0 10px rgba(0, 243, 255, 0.2);
+            text-shadow: 0 0 5px var(--neon-blue);
+            transition: all 0.3s; letter-spacing: 2px;
+        }
+        .big-start-btn:hover { 
+            background: var(--neon-blue); color: var(--bg-main); 
+            box-shadow: 0 0 30px var(--neon-blue);
+            transform: scale(1.05);
+        }
+        .big-start-btn:active { transform: scale(0.95); }
+
+        /* --- List Screen --- */
+        .nav-header { display: flex; align-items: center; margin-bottom: 20px; }
+        .back-btn { 
+            background: none; border: 2px solid var(--neon-blue); color: var(--neon-blue); 
+            width: 36px; height: 36px; border-radius: 50%; margin-right: 15px; cursor: pointer; 
+            box-shadow: var(--glow-blue); transition: 0.3s;
+        }
+        .back-btn:hover { background: var(--neon-blue); color: var(--bg-main); }
+        
+        .unit-card {
+            background: var(--panel-bg); 
+            padding: 15px 20px; 
+            margin-bottom: 15px;
+            border-radius: 12px; 
+            border: var(--border-glow); 
+            border-left: 5px solid var(--neon-pink);
+            text-decoration: none; 
+            color: var(--text-bright); 
+            display: flex; /* 改為 Flex */
+            justify-content: space-between; /* 左右分開 */
+            align-items: center; /* 垂直置中 */
+            backdrop-filter: blur(3px); 
+            transition: all 0.3s;
+        }
+        .unit-card:hover {
+            box-shadow: var(--glow-pink); transform: translateX(5px);
+            border-color: var(--neon-pink);
+        }
+
+        /* 標靶按鈕主體 */
+        .launch-btn {
+            width: 46px;
+            height: 46px;
+            border: 2px solid var(--neon-pink);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            transition: all 0.3s;
+            box-shadow: 0 0 10px rgba(255, 0, 153, 0.2);
+            flex-shrink: 0; /* 防止按鈕被擠壓 */
+        }
+
+        /* 標靶準星裝飾 (上下左右的小短線) */
+        .launch-btn::before, .launch-btn::after {
+            content: '';
+            position: absolute;
+            background: var(--neon-pink);
+        }
+        /* 垂直線 */
+        .launch-btn::before { width: 2px; height: 100%; top: 0; left: 50%; transform: translateX(-50%); opacity: 0.3; }
+        /* 水平線 */
+        .launch-btn::after { width: 100%; height: 2px; top: 50%; left: 0; transform: translateY(-50%); opacity: 0.3; }
+
+        /* 滑鼠移入效果 */
+        .unit-card:hover .launch-btn {
+            background: var(--neon-pink);
+            box-shadow: var(--glow-pink);
+            transform: rotate(90deg); /* 旋轉增加科技感 */
+        }
+        .unit-card:hover .launch-btn span {
+            color: white;
+            transform: rotate(-90deg); /* 文字轉回來保持水平 */
+        }
+
+        .launch-btn span {
+            font-size: 1.2rem;
+            color: var(--neon-pink);
+            transition: 0.3s;
+            z-index: 2;
+        }
+        
+        /* Select & Filter Buttons */
+        .rank-select, .filter-btn {
+            background: rgba(0,0,0,0.3); color: var(--neon-blue); 
+            border: 1px solid var(--neon-blue);
+            padding: 5px 10px; border-radius: 5px; font-size: 0.9rem;
+            outline: none; cursor: pointer; transition: 0.3s;
+        }
+        .rank-select option {
+            background-color: #101830; /* 配合你原本的深色科幻面板底色 */
+            color: var(--neon-blue);
+        }
+        .rank-select:hover, .filter-btn:hover { box-shadow: var(--glow-blue); }
+        .filter-btn.active { background: var(--neon-blue); color: var(--bg-main); box-shadow: var(--glow-blue); }
+
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2 style="color:var(--neon-blue); margin-top:0;">🚀 晟自然測驗中心</h2>
+            
+            <div id="login-step-1">
+                <p style="color:var(--text-dim)">請輸入驗證碼</p>
+                <input type="number" id="login-token" class="login-input" placeholder="password">
+                <button class="login-btn" id="btn-verify" onclick="verifyToken()">核對身分 ➜</button>
+            </div>
+
+            <div id="login-step-2" style="display: none;">
+                <p id="nick-prompt" style="color:var(--text-dim); line-height:1.5;"></p>
+                <input type="text" id="login-nickname" class="login-input" placeholder="請輸入永久暱稱">
+                <button class="login-btn" id="btn-final-login"></button>
+            </div>
+
+            <div id="login-msg" style="margin-top:15px; color:var(--neon-pink); font-size:0.9rem; text-shadow: 0 0 5px;"></div>
+        </div>
+    </div>
+
+    <div id="screen-home" class="screen active">
+        <div class="home-header">
+            <div class="header-left">
+                <img src="logo.jpg" alt="Logo" class="logo-img">
+                <div>
+                    <div class="user-info">Hi, <span id="display-name">指揮官</span></div>
+                    <div class="user-detail"><span id="display-school">...</span> | <span id="display-nick">...</span></div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">中斷連線</button>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="panel">
+                <div class="panel-title">
+                    <span>🏆 風雲榜</span>
+                    <select id="rank-unit-select" class="rank-select" onchange="fetchRank(this.value)">
+                        <option value="" disabled selected>選擇單元</option>
+                    </select>
+                </div>
+                <div class="scroll-area" id="rank-list">
+                    <div style="text-align:center; color:var(--text-dim); margin-top:20px;">請由上方選擇單元載入風雲榜</div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-title">📅 練習歷程</div>
+                <div class="scroll-area" id="history-list">
+                    <div style="height:250px; display:flex; align-items:center; justify-content:center; color:var(--text-dim);">讀取中...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-area">
+            <button class="big-start-btn" onclick="switchScreen('screen-list')">選擇測驗單元 ➜</button>
+        </div>
+    </div>
+
+    <div id="screen-list" class="screen">
+        <div class="nav-header">
+            <button class="back-btn" onclick="switchScreen('screen-home')">◀</button>
+            <h2 style="margin:0">返回</h2>
+        </div>
+        
+        <div style="display:flex; justify-content:center; gap:10px; margin-bottom:20px;">
+            <button onclick="renderList('三年級')" class="filter-btn" id="btn-g3">三年級</button>
+            <button onclick="renderList('四年級')" class="filter-btn" id="btn-g4">四年級</button>
+            <button onclick="renderList('五年級')" class="filter-btn" id="btn-g5">五年級</button>
+            <button onclick="renderList('六年級')" class="filter-btn active" id="btn-g6">六年級</button>
+			<button onclick="renderList('七年級')" class="filter-btn" id="btn-g7">七年級</button>
+            <button onclick="renderList('八年級')" class="filter-btn" id="btn-g8">八年級</button>
+            <button onclick="renderList('九年級')" class="filter-btn" id="btn-g9">九年級</button>
+        </div>
+
+        <div id="list-content" style="padding-bottom:50px;"></div>
+    </div>
+
+    <script src="data.js"></script>
+
+    <script>
+        // HTML 字元安全過濾器
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return str;
+            return str.replace(/[&<>'"]/g, function(match) {
+                const escapeMap = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                };
+                return escapeMap[match];
+            });
+        }
+        
+        // ★★★ 設定區：請填入您的 GAS 網址 ★★★
+        const API_URL = "https://script.google.com/macros/s/AKfycbxYHEjAIJQCukUIIwJp9lRkoRgQt2DIkOfU83RpbCPP2x92icAA622CPiMEtqO0K2dZ/exec"; 
+        
+        // 全域狀態管理
+        let currentUser = null;
+        let tempUserData = null; // 用於暫存第一階段驗證通過的資料
+
+        // 初始化
+        window.onload = function() {
+            checkLoginStatus();
+            initRankSelector();
+        };
+
+        // --- 1. 登入系統 (兩階段驗證) ---
+        function checkLoginStatus() {
+            const stored = localStorage.getItem('sh_user');
+            if (stored) {
+                const storedUser = JSON.parse(stored);
+                const msgBox = document.getElementById('login-msg');
+                msgBox.innerText = "驗證身分中...";
+                
+                // 拿本機快取的 Token 去後台進行靜默驗證
+                fetch(`${API_URL}?action=login&token=${storedUser.token}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // 驗證通過：更新全域變數，並確保拿到最新的名字與暱稱
+                            currentUser = {
+                                token: storedUser.token, // token 維持原樣
+                                name: data.name,
+                                school: data.school,
+                                nickname: data.nickname
+                            };
+                            // 更新本機快取，確保資料同步
+                            localStorage.setItem('sh_user', JSON.stringify(currentUser));
+                            
+                            updateUserInfo();
+                            document.getElementById('login-overlay').classList.add('hidden');
+                            loadDashboardData();
+                        } else {
+                            // 驗證失敗：Token 已被後台移除或失效
+                            localStorage.removeItem('sh_user');
+                            currentUser = null;
+                            document.getElementById('login-overlay').classList.remove('hidden');
+                            msgBox.innerText = "登入憑證已失效，請聯繫晟老師";
+                        }
+                    })
+                    .catch(err => {
+                        // 網路異常處理：若伺服器暫時無回應，為避免卡死，先用本機快取放行
+                        console.warn("靜默驗證連線異常，暫時使用本機快取登入", err);
+                        currentUser = storedUser;
+                        updateUserInfo();
+                        document.getElementById('login-overlay').classList.add('hidden');
+                        loadDashboardData();
+                    });
+            } else {
+                document.getElementById('login-overlay').classList.remove('hidden');
+            }
+        }
+
+        // [階段一] 核對 Token
+        function verifyToken() {
+            const tokenInput = document.getElementById('login-token');
+            const token = tokenInput.value.trim();
+            const msgBox = document.getElementById('login-msg');
+            const btnVerify = document.getElementById('btn-verify');
+
+            if (!token) {
+                msgBox.innerText = "請輸入 TOKEN_ID";
+                return;
+            }
+
+            msgBox.innerText = "身分比對中...";
+            btnVerify.disabled = true;
+
+            fetch(`${API_URL}?action=login&token=${token}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        msgBox.innerText = "";
+                        
+                        // 暫存後端傳來的個資
+                        tempUserData = {
+                            token: token,
+                            name: data.name,
+                            school: data.school,
+                            nickname: data.nickname 
+                        };
+
+                        // 切換介面至階段二
+                        document.getElementById('login-step-1').style.display = 'none';
+                        document.getElementById('login-step-2').style.display = 'block';
+
+                        const nickInput = document.getElementById('login-nickname');
+                        const prompt = document.getElementById('nick-prompt');
+                        const btnFinal = document.getElementById('btn-final-login');
+
+                        // 判斷是否已有暱稱
+                        if (data.nickname && data.nickname.trim() !== "") {
+                            // 已經綁定過 (老手) -> 直接呼叫函數進入大廳，完全不顯示階段二
+                            enterSystem(); 
+                        } else {
+                            // 尚未綁定 (新手) -> 切換介面至階段二讓他輸入暱稱
+                            document.getElementById('login-step-1').style.display = 'none';
+                            document.getElementById('login-step-2').style.display = 'block';
+    
+                            prompt.innerHTML = "初次登入：請設定專屬暱稱<br><span style='color:var(--neon-pink); font-size:0.9em;'>(設定後永久綁定，無法更改)</span>";
+                            nickInput.value = "";
+                            nickInput.readOnly = false; // 開放輸入
+                            btnFinal.innerText = "確認綁定並啟動 ➜";
+                            btnFinal.onclick = registerNickname; // 呼叫寫入 API
+                        }
+
+                    } else {
+                        msgBox.innerText = "存取被拒：" + data.message;
+                        tokenInput.focus();
+                    }
+                })
+                .catch(err => {
+                    msgBox.innerText = "伺服器連線中斷";
+                    console.error(err);
+                })
+                .finally(() => {
+                    btnVerify.disabled = false;
+                });
+        }
+
+        // [階段二-分支 A] 老手直接進入系統
+        function enterSystem() {
+            localStorage.setItem('sh_user', JSON.stringify(tempUserData));
+            currentUser = tempUserData;
+            updateUserInfo();
+            document.getElementById('login-overlay').classList.add('hidden');
+            loadDashboardData();
+        }
+
+        // [階段二-分支 B] 新手註冊暱稱並寫入後端
+        function registerNickname() {
+            const nickInput = document.getElementById('login-nickname');
+            const customNick = nickInput.value.trim();
+            const msgBox = document.getElementById('login-msg');
+            const btnFinal = document.getElementById('btn-final-login');
+
+            if (!customNick) {
+                msgBox.innerText = "請務必輸入指揮官代號！";
+                nickInput.focus();
+                return;
+            }
+
+            msgBox.innerText = "正在將代號寫入雲端中樞...";
+            btnFinal.disabled = true;
+
+            // 呼叫新的註冊 API
+            fetch(`${API_URL}?action=register_nick&token=${tempUserData.token}&nickname=${encodeURIComponent(customNick)}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // 註冊成功，更新暫存資料並進入系統
+                        tempUserData.nickname = customNick;
+                        enterSystem();
+                    } else {
+                        msgBox.innerText = "綁定失敗：" + data.message;
+                        btnFinal.disabled = false;
+                    }
+                })
+                .catch(err => {
+                    msgBox.innerText = "伺服器連線中斷，請重試。";
+                    console.error(err);
+                    btnFinal.disabled = false;
+                });
+        }
+
+        function logout() {
+            if(confirm("確定要切斷連結嗎？")) {
+                localStorage.removeItem('sh_user');
+                location.reload();
+            }
+        }
+
+        function updateUserInfo() {
+            if (!currentUser) return;
+            document.getElementById('display-name').innerText = currentUser.name;
+            document.getElementById('display-school').innerText = currentUser.school || "未知單位";
+            document.getElementById('display-nick').innerText = currentUser.nickname || "代號不明";
+        }
+
+        // --- 2. 儀表板資料載入 ---
+        function loadDashboardData() {
+            fetchHistory();
+        }
+
+        function fetchHistory() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = '<div style="height:250px; display:flex; align-items:center; justify-content:center; color:var(--text-dim);">讀取戰力數據...</div>';
+
+            fetch(`${API_URL}?action=history&token=${currentUser.token}`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === 'success' && res.data.length > 0) {
+                        list.innerHTML = '';
+                        res.data.forEach(item => {
+                            let unitName = item.unit_id;
+                            if (typeof QUESTION_DATABASE !== 'undefined' && QUESTION_DATABASE[item.unit_id]) {
+                                unitName = QUESTION_DATABASE[item.unit_id].unit;
+                            }
+                            
+                            const date = new Date(item.time);
+                            const dateStr = `${date.getMonth()+1}/${date.getDate()} <span style="font-size:0.8em">${date.getHours()}:${date.getMinutes()<10?'0'+date.getMinutes():date.getMinutes()}</span>`;
+
+                            list.innerHTML += `
+                                <div class="history-row">
+                                    <div style="flex:1">
+                                        <div style="font-weight:bold; margin-bottom:4px; color:var(--neon-blue)">${unitName}</div>
+                                        <div class="meta-info">${dateStr}</div>
+                                    </div>
+                                    <div class="score-val">${item.score}</div>
+                                </div>
+                            `;
+                        });
+                        
+                        if (res.data[0]) {
+                            const lastUnit = res.data[0].unit_id;
+                            const select = document.getElementById('rank-unit-select');
+                            select.value = lastUnit;
+                            fetchRank(lastUnit);
+                        }
+
+                    } else {
+                        list.innerHTML = '<div style="text-align:center; color:var(--text-dim); margin-top:20px;">尚無作戰紀錄</div>';
+                    }
+                });
+        }
+
+        function initRankSelector() {
+            if (typeof QUESTION_DATABASE === 'undefined') return;
+            const select = document.getElementById('rank-unit-select');
+            
+            for (let id in QUESTION_DATABASE) {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.innerText = QUESTION_DATABASE[id].unit;
+                select.appendChild(opt);
+            }
+        }
+
+        function fetchRank(unitId) {
+            if (!unitId) return;
+            const list = document.getElementById('rank-list');
+            list.innerHTML = '<div style="text-align:center; color:var(--text-dim); margin-top:10px;">讀取戰力數據...</div>';
+
+            // 加入 Token 供後端安全比對
+            const userToken = currentUser ? currentUser.token : "";
+            fetch(`${API_URL}?action=rank&unit_id=${unitId}&token=${userToken}`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        list.innerHTML = '';
+                        if (res.data.length === 0) {
+                            list.innerHTML = '<div style="text-align:center; color:var(--text-dim); margin-top:20px;">此單元無人上榜</div>';
+                            return;
+                        }
+
+                        res.data.forEach((item, index) => {
+                            let rankClass = 'rank-other';
+                            let extraClass = ''; 
+    
+                            if (index === 0) { rankClass = 'rank-1'; extraClass = 'rank-star'; }
+                            else if (index === 1) { rankClass = 'rank-2'; extraClass = 'rank-star'; }
+                            else if (index === 2) { rankClass = 'rank-3'; extraClass = 'rank-star'; }
+
+                            const isMe = item.is_me;
+                            const nameStyle = isMe ? 'color:var(--neon-pink); text-shadow:0 0 5px;' : '';
+
+                            list.innerHTML += `
+                                <div class="rank-row" style="${isMe ? 'background:rgba(255,0,153,0.1)' : ''}">
+                                    <div style="display:flex; align-items:center;">
+                                        <div class="rank-badge ${rankClass}">
+                                            <div class="rank-shape ${extraClass}">
+                                                <span>${index + 1}</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div style="font-weight:bold; ${nameStyle}">${escapeHTML(item.name)}</div>
+                                            <div class="meta-info">${escapeHTML(item.school)}</div>
+                                        </div>
+                                    </div>
+                                    <div class="score-val">${item.score}</div>
+                                </div>
+                            `;
+                        });
+                    }
+                });
+        }
+
+        // --- 3. 頁面切換 ---
+        function switchScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            if(screenId === 'screen-list') renderList('六年級');
+        }
+
+        function renderList(grade) {
+            const listArea = document.getElementById('list-content');
+            listArea.innerHTML = ''; 
+
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            
+            if(grade === '三年級') document.getElementById('btn-g3')?.classList.add('active');
+            if(grade === '四年級') document.getElementById('btn-g4')?.classList.add('active');
+            if(grade === '五年級') document.getElementById('btn-g5')?.classList.add('active');
+            if(grade === '六年級') document.getElementById('btn-g6')?.classList.add('active');
+
+            if (typeof QUESTION_DATABASE === 'undefined') {
+                console.error("找不到 data.js");
+                return;
+            }
+
+            let count = 0;
+            for (let id in QUESTION_DATABASE) {
+                const item = QUESTION_DATABASE[id];
+                if (item.grade === grade) {
+                    count++;
+                    const cardHTML = `
+                        <a href="quiz.html?id=${id}" class="unit-card">
+                            <div>
+                                <div style="font-size:0.75rem; color:var(--neon-pink); margin-bottom:4px; letter-spacing:1px;">MISSION OBJECTIVE</div>
+                                <div style="font-weight:bold; font-size:1.15rem; color:var(--neon-blue)">${item.unit}</div>
+                            </div>
+
+                            <div class="launch-btn">
+                                <span>➜</span>
+                            </div>
+                        </a>
+                    `;
+                    listArea.innerHTML += cardHTML;
+                }
+            }
+
+            if (count === 0) {
+                listArea.innerHTML = `<div style="text-align:center; color:#666; margin-top:30px;">目前尚無 ${grade} 的單元題庫</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>晟自然玩科學 - 線上作業系統</title>
+    <style>
+        /* --- Sci-Fi Theme Variables (Sync with Lobby) --- */
+        :root {
+            --bg-main: #0a0a14;
+            --panel-bg: rgba(16, 24, 48, 0.85);
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff0099;
+            --text-bright: #ffffff;
+            --text-dim: #8a9ab5;
+            --correct: #00ff00;
+            --wrong: #ff0000;
+            --gold: #ffd700;
+            
+            --glow-blue: 0 0 10px rgba(0, 243, 255, 0.4);
+            --border-glow: 1px solid rgba(0, 243, 255, 0.3);
+        }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-main);
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+            color: var(--text-bright);
+            height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            overflow: hidden;
+        }
+
+        /* Game Container */
+        .game-container {
+            width: 95%; max-width: 600px; height: 90vh;
+            background: var(--panel-bg);
+            border-radius: 15px;
+            border: var(--border-glow);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(0, 243, 255, 0.05);
+            display: flex; flex-direction: column;
+            position: relative;
+            backdrop-filter: blur(5px);
+        }
+
+        /* Header */
+        .header {
+            padding: 15px 20px;
+            border-bottom: var(--border-glow);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .progress-box { display: flex; align-items: center; color: var(--neon-blue); font-weight: bold; text-shadow: 0 0 5px rgba(0, 243, 255, 0.5); }
+        .timer-box { color: var(--text-dim); font-size: 1.1rem; }
+        
+        /* 返回按鈕樣式 */
+        .back-btn {
+            color: var(--neon-pink);
+            text-decoration: none;
+            margin-right: 12px;
+            font-size: 1.2rem;
+            transition: 0.2s;
+            text-shadow: 0 0 5px rgba(255, 0, 153, 0.5);
+        }
+        .back-btn:active { color: var(--text-bright); }
+
+        /* Scrollable Content Area */
+        .content-area {
+            flex: 1; overflow-y: auto; padding: 20px;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+
+        /* Question */
+        .question-text {
+            font-size: 1.2rem; 
+            line-height: 1.6;
+            margin-bottom: 10px;
+            min-height: 9.6em; /* 固定 6 行高度 (手機版) */
+        }
+
+        /* Options Grid */
+        .options-grid {
+            display: flex; flex-direction: column; gap: 12px;
+        }
+
+        .option-btn {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--text-dim);
+            color: var(--text-dim);
+            padding: 15px; 
+            text-align: center; 
+            font-size: 1.15rem; 
+            border-radius: 8px;
+            cursor: pointer; transition: all 0.2s;
+            position: relative;
+        }
+
+        /* 互動狀態 */
+        .option-btn.selected {
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            background: rgba(0, 243, 255, 0.1);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+        }
+        .option-btn.ans-correct {
+            border-color: var(--correct); color: var(--correct);
+            background: rgba(0, 255, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+        .option-btn.ans-wrong {
+            border-color: var(--wrong); color: var(--wrong);
+            background: rgba(255, 0, 0, 0.1);
+        }
+        .option-btn.dimmed { opacity: 0.4; pointer-events: none; }
+
+        /* 快速導航面板 */
+        .quick-nav {
+            padding: 10px 20px;
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 6px;
+            border-top: 1px solid rgba(138, 154, 181, 0.2);
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .q-dot {
+            aspect-ratio: 1 / 1;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--text-dim);
+            color: var(--text-dim);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: 0.2s;
+            user-select: none;
+        }
+        .q-dot.answered {
+            background: rgba(0, 243, 255, 0.15);
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            box-shadow: inset 0 0 5px rgba(0, 243, 255, 0.3);
+        }
+        .q-dot.current {
+            background: var(--neon-blue);
+            color: #000;
+            font-weight: bold;
+            box-shadow: 0 0 8px var(--neon-blue);
+            border-color: var(--neon-blue);
+            transform: scale(1.1);
+            z-index: 2;
+        }
+        .q-dot.wrong-review {
+            border-color: var(--wrong);
+            color: var(--wrong);
+            background: rgba(255, 0, 0, 0.15);
+        }
+
+        /* Footer Nav */
+        .footer {
+            padding: 15px 20px;
+            border-top: var(--border-glow);
+            display: flex; justify-content: space-between; gap: 10px;
+        }
+
+        .nav-btn {
+            background: transparent; border: 1px solid var(--neon-blue);
+            color: var(--neon-blue); padding: 10px 20px; border-radius: 50px;
+            cursor: pointer; font-size: 1rem; flex: 1; transition: 0.3s;
+            text-align: center; text-decoration: none; 
+            display: flex; justify-content: center; align-items: center;
+        }
+        .nav-btn:active { background: var(--neon-blue); color: black; }
+        .nav-btn:disabled { border-color: #555; color: #555; pointer-events: none; opacity: 0.5; }
+
+        .submit-btn {
+            background: var(--neon-pink); border: none; color: white;
+            box-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        /* Result Overlay (結算畫面) */
+        #result-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 20, 0.98);
+            z-index: 100;
+            display: none; flex-direction: column;
+            justify-content: space-between; 
+            align-items: center;
+            text-align: center;
+            padding: 40px 0; 
+            box-sizing: border-box;
+        }
+
+        .result-top-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .score-circle {
+            width: 180px; height: 180px;
+            border-radius: 50%;
+            border: 5px solid var(--neon-blue);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 5rem; font-weight: bold; color: var(--neon-blue);
+            box-shadow: 0 0 30px rgba(0, 243, 255, 0.3);
+            margin: 20px 0 30px 0;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+        }
+
+        /* 數據面板 */
+        .data-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(138, 154, 181, 0.3);
+            border-radius: 12px;
+            padding: 15px 25px;
+            width: 80%; max-width: 300px;
+        }
+
+        /* 按鈕群組 */
+        .action-group {
+            display: flex; gap: 15px;
+            width: 85%; max-width: 400px;
+            margin-bottom: 20px; 
+        }
+
+        /* 實心粉色返回按鈕 */
+        .btn-home {
+            background: var(--neon-pink); border: none; color: white;
+            box-shadow: 0 0 10px rgba(255, 0, 153, 0.5);
+        }
+        .btn-home:active { background: #cc007a; color: white; }
+        .btn-home:hover { background: var(--neon-pink); color: white; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- [新增] 響應式佈局 (電腦與平板模式) --- */
+        @media (min-width: 600px) {
+            .options-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr); /* 雙欄等寬排列 */
+                gap: 15px;
+            }
+            .question-text {
+                min-height: 6.4em; /* 電腦版寬度足夠，將固定高度降為 4 行，保留更多空間給選項 */
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="header">
+            <div class="progress-box">
+                <a href="#" class="back-btn" onclick="confirmExit(event)">◀</a>
+                <span id="unit-title">載入中...</span>
+            </div>
+            <div class="timer-box" id="timer-text" style="font-family: monospace;">00:00.0</div>
+        </div>
+
+        <div class="content-area" id="q-container">
+            <div id="question-text" class="question-text">載入中...</div>
+            <div id="options-area" class="options-grid"></div>
+        </div>
+
+        <div class="quick-nav" id="quick-nav-box"></div>
+
+        <div class="footer">
+            <button class="nav-btn" id="btn-prev" onclick="changeQuestion(-1)">◀ 上一題</button>
+            <button class="nav-btn" id="btn-next" onclick="changeQuestion(1)">下一題 ▶</button>
+            <button class="nav-btn submit-btn" id="btn-submit" onclick="submitExam()" style="display:none;">交卷</button>
+        </div>
+
+        <div id="result-overlay">
+            
+            <div class="result-top-group">
+                <h2 style="color:var(--text-bright); margin-bottom: 0; font-size: 1.8rem;">作答完成</h2>
+                
+                <div class="score-circle" id="final-score">0</div>
+                
+                <div class="data-panel" id="result-data-panel">
+                    <div style="color:var(--text-dim); margin-bottom: 8px;">
+                        作答耗時：<span id="final-time-display" style="font-family: monospace; color:var(--neon-blue); font-size: 1.1rem;">00:00.0</span>
+                    </div>
+                    <div id="final-msg" style="color:var(--text-dim); font-size: 0.95rem;">成績上傳中...</div>
+                </div>
+            </div>
+
+            <div class="action-group" id="result-action-group" style="display:none;">
+                <button class="nav-btn" onclick="reviewMode()">查看錯題</button>
+                <a href="index.html" class="nav-btn btn-home">返回大廳</a>
+            </div>
+            
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+
+    <script>
+        // ★★★ 設定區：請填入您的 GAS 網址 ★★★
+        const API_URL = "https://script.google.com/macros/s/AKfycbxYHEjAIJQCukUIIwJp9lRkoRgQt2DIkOfU83RpbCPP2x92icAA622CPiMEtqO0K2dZ/exec"; 
+
+        // 系統變數
+        let currentQuestions = [];
+        let currentIndex = 0;
+        let userAnswers = []; 
+        let isSubmitted = false;
+        let currentUser = null;
+        let workId = null;
+
+        // 計時器變數
+        let startTime = null;
+        let timerReqId = null;
+        let finalTimeStr = "00:00.0";
+
+        // [在此處補上] HTML 字元安全過濾器
+        function escapeHTML(str) {
+            if (typeof str !== 'string') return str;
+            return str.replace(/[&<>'"]/g, function(match) {
+                const escapeMap = {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                };
+                return escapeMap[match];
+            });
+        }
+
+        // 初始化
+        window.onload = function() {
+            const stored = localStorage.getItem('sh_user');
+            if (!stored) {
+                alert("未偵測到身分訊號，請重新登入");
+                window.location.href = 'index.html';
+                return;
+            }
+            currentUser = JSON.parse(stored);
+
+            const urlParams = new URLSearchParams(window.location.search);
+            workId = urlParams.get('id');
+
+            if (typeof QUESTION_DATABASE !== 'undefined' && QUESTION_DATABASE[workId]) {
+                const unitName = QUESTION_DATABASE[workId].unit;
+                document.title = unitName;
+                document.getElementById('unit-title').innerText = unitName; 
+            } else {
+                alert("無效的使用者 ID");
+                window.location.href = 'index.html';
+                return;
+            }
+
+            fetchQuestions(workId);
+        };
+
+        // 返回按鈕攔截與時間補償機制
+        function confirmExit(e) {
+            e.preventDefault(); 
+            
+            if (isSubmitted) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            if (timerReqId) cancelAnimationFrame(timerReqId);
+            const pauseBegin = Date.now();
+
+            const isLeaving = confirm("確定要放棄當前測驗並返回大廳嗎？\n您的作答紀錄將不會被保存。");
+
+            if (isLeaving) {
+                window.location.href = 'index.html';
+            } else {
+                const pauseDuration = Date.now() - pauseBegin;
+                startTime += pauseDuration; 
+                timerReqId = requestAnimationFrame(updateTimer);
+            }
+        }
+
+        function fetchQuestions(unitId) {
+            const loadingText = document.getElementById('question-text');
+            loadingText.innerHTML = `<span style="color:var(--neon-blue)">正在建立題目...<br>讀取單元：${unitId}</span>`;
+
+            fetch(`${API_URL}?action=get_quiz&unit_id=${unitId}`)
+                .then(res => res.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        currentQuestions = res.data; // 此時 data 僅包含 q_id, q, opt
+                        userAnswers = new Array(currentQuestions.length).fill(null);
+                        initQuickNav();
+                        loadQuestion(0);
+                        startTimer();
+                    }
+                });
+        }
+
+        function startTimer() {
+            startTime = Date.now();
+            timerReqId = requestAnimationFrame(updateTimer);
+        }
+
+        function updateTimer() {
+            if (isSubmitted) return; 
+
+            const elapsed = Date.now() - startTime;
+            const m = Math.floor(elapsed / 60000).toString().padStart(2, '0');
+            const s = Math.floor((elapsed % 60000) / 1000).toString().padStart(2, '0');
+            const ms = Math.floor((elapsed % 1000) / 100); 
+
+            finalTimeStr = `${m}:${s}.${ms}`;
+            document.getElementById('timer-text').innerText = finalTimeStr;
+
+            timerReqId = requestAnimationFrame(updateTimer);
+        }
+
+        function initQuickNav() {
+            const navBox = document.getElementById('quick-nav-box');
+            navBox.innerHTML = '';
+            
+            currentQuestions.forEach((_, i) => {
+                const dot = document.createElement('div');
+                dot.className = 'q-dot';
+                dot.id = `q-dot-${i}`;
+                dot.innerText = i + 1;
+                dot.onclick = () => {
+                    if (currentIndex !== i) loadQuestion(i);
+                };
+                navBox.appendChild(dot);
+            });
+        }
+
+        function updateQuickNav() {
+            currentQuestions.forEach((q, i) => {
+                const dot = document.getElementById(`q-dot-${i}`);
+                if (!dot) return;
+                
+                dot.className = 'q-dot'; 
+                
+                if (isSubmitted) {
+                    if (userAnswers[i] === q.ans) {
+                        dot.classList.add('answered'); 
+                    } else {
+                        dot.classList.add('wrong-review'); 
+                    }
+                } else {
+                    if (userAnswers[i] !== null) {
+                        dot.classList.add('answered'); 
+                    }
+                }
+                
+                if (i === currentIndex) {
+                    dot.classList.add('current');
+                }
+            });
+        }
+
+        function loadQuestion(index) {
+            currentIndex = index;
+            const qData = currentQuestions[index];
+
+            document.getElementById('question-text').innerHTML = escapeHTML(qData.q);
+            
+            const optsArea = document.getElementById('options-area');
+            optsArea.innerHTML = '';
+
+            qData.opt.forEach((optText, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = optText;
+                
+                if (isSubmitted) {
+                    btn.disabled = true; 
+                    if (i === qData.ans) btn.classList.add('ans-correct'); 
+                    if (i === userAnswers[index] && i !== qData.ans) btn.classList.add('ans-wrong'); 
+                    if (i !== qData.ans && i !== userAnswers[index]) btn.classList.add('dimmed'); 
+                } else {
+                    if (userAnswers[index] === i) btn.classList.add('selected');
+                    btn.onclick = () => selectOption(i);
+                }
+                
+                optsArea.appendChild(btn);
+            });
+
+            const btnPrev = document.getElementById('btn-prev');
+            const btnNext = document.getElementById('btn-next');
+            const btnSubmit = document.getElementById('btn-submit');
+
+            if (isSubmitted) {
+                // 【檢視錯題模式】：套用你的完美提案
+    
+                // 1. 隱藏左側「上一題」按鈕
+                btnPrev.style.display = 'none';
+    
+                // 2. 右側按鈕變成常駐的「結束並返回」
+                btnNext.style.display = 'flex';
+                btnNext.disabled = false;
+                btnNext.innerText = '結束並返回 ➜';
+    
+                // 套用明顯的霓虹粉色樣式，引導視覺
+                btnNext.style.borderColor = 'var(--neon-pink)';
+                btnNext.style.color = 'var(--neon-pink)';
+                btnNext.style.boxShadow = '0 0 10px rgba(255, 0, 153, 0.2)';
+    
+                // 覆寫點擊事件，直接返回大廳
+                btnNext.onclick = function() {
+                    window.location.href = 'index.html';
+                };
+    
+                // 隱藏交卷按鈕
+                btnSubmit.style.display = 'none';
+    
+            } else {
+                // 【正常測驗模式】：維持原本的線性邏輯
+    
+                btnPrev.style.display = 'flex'; // 確保上一題按鈕顯示
+                btnPrev.disabled = (index === 0);
+
+                // 還原下一題的預設功能與樣式（避免被其他狀態污染）
+                btnNext.innerText = '下一題 ▶';
+                btnNext.style.borderColor = 'var(--neon-blue)';
+                btnNext.style.color = 'var(--neon-blue)';
+                btnNext.style.boxShadow = 'none';
+                btnNext.onclick = function() { changeQuestion(1); };
+
+                if (index === currentQuestions.length - 1) {
+                    // 最後一題
+                    btnNext.style.display = 'none';
+                    btnSubmit.style.display = 'flex';
+                } else {
+                    // 非最後一題
+                    btnNext.style.display = 'flex';
+                    btnNext.disabled = false;
+                    btnSubmit.style.display = 'none';
+                }
+            }
+
+            updateQuickNav();
+        }
+
+        function selectOption(optIndex) {
+            if (isSubmitted) return;
+            
+            userAnswers[currentIndex] = optIndex;
+            
+            const btns = document.querySelectorAll('.option-btn');
+            btns.forEach((btn, i) => {
+                if (i === optIndex) btn.classList.add('selected');
+                else btn.classList.remove('selected');
+            });
+
+            updateQuickNav();
+        }
+
+        function changeQuestion(delta) {
+            const newIndex = currentIndex + delta;
+            if (newIndex >= 0 && newIndex < currentQuestions.length) {
+                loadQuestion(newIndex);
+            }
+        }
+
+        function submitExam() {
+            const unanswered = userAnswers.filter(a => a === null).length;
+            if (unanswered > 0 && !confirm(`還有 ${unanswered} 題未作答，確定要交卷嗎？`)) return;
+
+            isSubmitted = true;
+            if (timerReqId) cancelAnimationFrame(timerReqId);
+    
+            // 準備後端計分需要的資料包
+            const answersPayload = currentQuestions.map((q, idx) => ({
+                q_id: q.q_id,
+                user_ans: userAnswers[idx]
+            }));
+
+            const payload = {
+                token: currentUser.token,
+                name: currentUser.name,
+                school: currentUser.school,
+                nickname: currentUser.nickname,
+                unit_id: workId,
+                time: finalTimeStr,
+                answers: answersPayload
+            };
+
+            const msgEl = document.getElementById('final-msg');
+            document.getElementById('result-overlay').style.display = 'flex';
+
+            fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (res.status === 'success') {
+                    // 將後端算好的分數與答案更新至畫面
+                    document.getElementById('final-score').innerText = res.score;
+                    msgEl.innerText = "戰績已同步至雲端中樞";
+            
+                    // 將後端回傳的正確答案填回題目資料中，以便 reviewMode 使用
+                    currentQuestions.forEach((q, idx) => {
+                        q.ans = res.correct_answers[idx];
+                    });
+            
+                    document.getElementById('result-action-group').style.display = 'flex';
+                }
+            });
+        }
+
+        function reviewMode() {
+            document.getElementById('result-overlay').style.display = 'none';
+            loadQuestion(0);
+        }
+
+        // 開發者專用神之手捷徑
+        window.devWin = function(pwd) {
+            if (pwd !== 9527) {
+                console.warn("無效的內部控制");
+                return;
+            }
+            console.log("【開發者模式已啟動】模擬作答並強制結算...");
+
+            if (timerReqId) cancelAnimationFrame(timerReqId);
+            document.getElementById('timer-text').style.color = "var(--neon-pink)";
+            
+            currentQuestions.forEach((q, idx) => {
+                userAnswers[idx] = Math.floor(Math.random() * q.opt.length);
+            });
+
+            let score = 0;
+            let scorePerQ = 100 / currentQuestions.length; 
+            if(currentQuestions.length === 10) scorePerQ = 10;
+            if(currentQuestions.length === 20) scorePerQ = 5;
+            if(currentQuestions.length === 25) scorePerQ = 4;
+            if(currentQuestions.length === 50) scorePerQ = 2;
+
+            currentQuestions.forEach((q, idx) => {
+                if (userAnswers[idx] === q.ans) score += scorePerQ;
+            });
+            score = Math.round(score);
+
+            isSubmitted = true;
+            document.getElementById('btn-submit').style.display = 'none';
+
+            const overlay = document.getElementById('result-overlay');
+            const scoreEl = document.getElementById('final-score');
+            const timeDisplay = document.getElementById('final-time-display');
+            const msgEl = document.getElementById('final-msg');
+            const actionGroup = document.getElementById('result-action-group');
+            
+            overlay.style.display = 'flex';
+            scoreEl.innerText = score;
+            timeDisplay.innerText = finalTimeStr;
+            msgEl.innerText = "【測試】已攔截資料庫上傳";
+            msgEl.style.color = "var(--gold)";
+            actionGroup.style.display = 'flex'; 
+            
+            loadQuestion(currentIndex);
+        };
+
+    </script>
+</body>
+</html>
