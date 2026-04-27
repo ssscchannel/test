@@ -137,7 +137,9 @@
         @media (max-width: 768px) {
             .dashboard-grid {
                 grid-template-columns: 1fr;
-                grid-auto-rows: min-content; } }
+                grid-template-rows: 1fr 1fr; /* 取代 min-content，強制上下完美平分剩餘空間 */
+            } 
+        }
 
         /* 修改面板設定，確保容器穩定 */
         .panel {
@@ -160,9 +162,10 @@
         }
 
         .scroll-area { 
-            overflow-y: auto; 
-            height: 250px !important; 
-            flex: none !important; 
+            overflow-y: auto;
+            flex: 1; /* 取代原有的 flex: none !important; 讓區塊自動填補剩餘空間 */
+            min-height: 0; /* 關鍵設定：防止 Flex 子元素內容溢出撐破外框 */
+            /* 移除原本的 height: 250px !important; */
             box-sizing: border-box;
             position: relative;
             scrollbar-width: none; 
