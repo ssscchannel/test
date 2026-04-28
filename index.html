@@ -32,7 +32,10 @@
                 radial-gradient(circle at 50% 50%, #1a1a3a 0%, var(--bg-main) 80%);
             background-size: 40px 40px, 40px 40px, 100% 100%;
             color: var(--text-bright);
-            height: 100vh; overflow: hidden;
+            /* 修改這裡：加入 100dvh 解決手機工具列遮擋問題 */
+            height: 100vh; /* 舊版瀏覽器備用 */
+            height: 100dvh; /* 新版動態視口高度 */
+            overflow: hidden;
         }
 
         /* --- Common Sci-Fi Elements --- */
@@ -138,6 +141,7 @@
             .dashboard-grid {
                 grid-template-columns: 1fr;
                 grid-template-rows: 1fr 1fr; /* 取代 min-content，強制上下完美平分剩餘空間 */
+                gap: 15px;
             } 
         }
 
@@ -153,7 +157,7 @@
             overflow: hidden; 
             backdrop-filter: blur(3px);
             /* 確保在 Grid 中不會因為內容過少而縮小 */
-            min-height: 320px; 
+            min-height: 0 !important; 
         }
 
         .panel-title {
