@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>晟自然測驗中心</title>
+    <script src="badges.js"></script>
     <style>
         /* --- Sci-Fi Theme Variables --- */
         :root {
@@ -353,9 +354,171 @@
         .rank-select:hover, .filter-btn:hover { box-shadow: var(--glow-blue); }
         .filter-btn.active { background: var(--neon-blue); color: var(--bg-main); box-shadow: var(--glow-blue); }
 
+        /* =========================================
+            徽章系統排版骨架 (大小、位置與標籤) 
+        ========================================= */
+
+        /* 1. 徽章容器：讓多個徽章保持水平排列，並與左側暱稱保持適當間距 */
+        .badge-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px; /* 徽章之間的間距 */
+            margin-left: 8px; /* 與暱稱的距離 */
+            vertical-align: middle;
+        }
+
+        /* 2. 徽章主體：控制合適的微縮比例，作為微縮標籤的定位基準 */
+        .simple-badge {
+            position: relative; /* 關鍵：讓內部的等級標籤以此為基準點進行絕對定位 */
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 20px;  /* 限制寬度 */
+            height: 20px; /* 限制高度 */
+            color: var(--text-dim); /* 預設為暗淡的未發光狀態 */
+            transition: all 0.3s ease;
+        }
+
+        /* 確保 SVG 向量圖能完美填滿設定好的空間 */
+        .badge-svg {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .badge-svg svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* 3. 等級數字標記 (微縮標籤)：精準懸浮於右下角 */
+        .badge-lv-tag {
+            position: absolute;
+            bottom: -4px; /* 往底端外推，製造層次感 */
+            right: -6px;  /* 往右側外推 */
+            background: rgba(10, 10, 20, 0.95); /* 採用極深的太空背景色避免干擾 */
+            color: var(--text-bright);
+            font-size: 0.45rem; /* 極小字體 */
+            font-weight: bold;
+            padding: 1px 3px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 243, 255, 0.3); /* 微微的科技藍邊框 */
+            z-index: 2; /* 確保疊加在 SVG 圖示的最上層 */
+            line-height: 1;
+            letter-spacing: 0.5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.8); /* 增加陰影使其立體感更強 */
+        }
+
+        /* =========================================
+            徽章等級特效 (視覺塗裝)
+        ========================================= */
+
+        /* Lv.1：初階 - 穩定的電光藍 */
+        .lv-1 {
+            color: rgba(255, 255, 255, 0.9);
+            filter: drop-shadow(0 0 3px rgba(0, 243, 255, 0.5));
+        }
+        .lv-1 .badge-lv-tag { border-color: rgba(255, 255, 255, 0.9); color: rgba(255, 255, 255, 0.9); }
+
+        /* Lv.2：進階 - 霓虹粉光 */
+        .lv-2 {
+            color: #fe8513;
+            filter: drop-shadow(0 0 5px rgba(255, 81, 0, 0.6));
+        }
+        .lv-2 .badge-lv-tag { border-color: rgba(255, 255, 255, 0.9); color: rgba(255, 255, 255, 0.9); }
+
+        /* Lv.3：專業 - 亮紫色與更強的光暈 */
+        .lv-3 {
+            color: #13fe6d; /* 亮紫色 */
+            filter: drop-shadow(0 0 8px rgba(19, 254, 137, 0.7));
+        }
+        .lv-3 .badge-lv-tag { border-color: rgba(255, 255, 255, 0.9); color: rgba(255, 255, 255, 0.9); }
+
+        /* Lv.4 (MAX)：傳說級 - 金色呼吸閃爍特效 */
+        .lv-4 {
+            color: var(--gold);
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+            animation: badgePulse 2s infinite ease-in-out;
+        }
+        .lv-4 .badge-lv-tag { 
+            border-color: rgba(255, 0, 0, 0.9); 
+            color: rgba(255, 255, 255, 0.9); 
+            background: rgba(40, 30, 0, 0.9); /* 專屬深金底色 */
+        }
+
+        /* --- 修訂版：同屏多色 Special 徽章 --- */
+        .lv-special {
+            filter: drop-shadow(0 0 10px rgba(0, 243, 255, 0.5));
+            animation: specialGlow 4s infinite linear;
+        }
+
+        /* A. 讓徽章圖案 (SVG) 呈現多色漸層 */
+        .lv-special svg path {
+            fill: url(#special-rainbow-grad) !important; /* 引用剛才在 HTML 定義的色盤 ID */
+            stroke: none; /* 確保恢復為填滿模式而非線條 */
+        }
+
+        /* B. 讓等級數字標記 (如 1 或 ★) 呈現彩色效果 */
+        .lv-special .badge-lv-tag {
+            /* 核心魔法：利用背景剪裁技術讓文字內容變彩色 */
+            background: linear-gradient(135deg, #00f3ff, #ff0099, #ffff00);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            border-color: rgba(255, 255, 255, 0.4);
+            font-weight: 900;
+            background-size: 200% 200%;
+        }
+
+        /* C. 更新動畫：從單純旋轉變色改為整體的發光呼吸感 */
+        @keyframes specialGlow {
+            0%, 100% { 
+                filter: drop-shadow(0 0 12px rgba(0, 243, 255, 0.6)); 
+                transform: scale(1); 
+            }
+            50% { 
+                filter: drop-shadow(0 0 22px rgba(255, 0, 153, 0.8)); 
+                transform: scale(1.08); 
+            }
+        }
+
+        /* --- 特效動畫定義 --- */
+
+        /* 滿等徽章的呼吸縮放效果 */
+        @keyframes badgePulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8)); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 18px rgba(255, 215, 0, 1)); }
+        }
+
+        /* 特殊徽章的色調旋轉效果 (營造幻彩感) */
+        @keyframes specialGlow {
+            0% { filter: hue-rotate(0deg) drop-shadow(0 0 12px #ff0000); }
+            50% { filter: hue-rotate(180deg) drop-shadow(0 0 18px #00f3ff); }
+            100% { filter: hue-rotate(360deg) drop-shadow(0 0 12px #ff0000); }
+        }
+
+        /* 讓畫面上多個特殊/冠軍徽章的彩虹流轉效果錯開 */
+        .lv-special:nth-child(2n) {
+            animation-delay: -0.7s;
+        }
+
+        .lv-special:nth-child(3n) {
+            animation-delay: -1.5s;
+        }
+
     </style>
 </head>
 <body>
+
+    <svg width="0" height="0" style="position: absolute;">
+        <defs>
+            <linearGradient id="special-rainbow-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#00f3ff" />   <stop offset="50%" style="stop-color:#ff0099" />  <stop offset="100%" style="stop-color:#ffff00" /> </linearGradient>
+        </defs>
+    </svg>
 
     <div id="login-overlay">
         <div class="login-box">
@@ -483,7 +646,8 @@
                                 token: storedUser.token, // token 維持原樣
                                 name: data.name,
                                 school: data.school,
-                                nickname: data.nickname
+                                nickname: data.nickname,
+                                badges: data.badges
                             };
                             // 更新本機快取，確保資料同步
                             localStorage.setItem('sh_user', JSON.stringify(currentUser));
@@ -538,7 +702,8 @@
                             token: token,
                             name: data.name,
                             school: data.school,
-                            nickname: data.nickname 
+                            nickname: data.nickname,
+                            badges: data.badges
                         };
 
                         // 切換介面至階段二
@@ -633,7 +798,8 @@
 
         function updateUserInfo() {
             if (!currentUser) return;
-            document.getElementById('display-name').innerText = currentUser.name;
+            // 改用 innerHTML 並呼叫 generateBadgesHTML 渲染專屬徽章
+            document.getElementById('display-name').innerHTML = `${escapeHTML(currentUser.name)} ${generateBadgesHTML(currentUser.badges)}`;
             document.getElementById('display-school').innerText = currentUser.school || "未知單位";
             document.getElementById('display-nick').innerText = currentUser.nickname || "代號不明";
         }
@@ -734,7 +900,7 @@
                                             </div>
                                         </div>
                                         <div>
-                                            <div style="font-weight:bold; ${nameStyle}">${escapeHTML(item.name)}</div>
+                                            <div style="font-weight:bold; ${nameStyle}">${escapeHTML(item.name)} ${generateBadgesHTML(item.badges)}</div>
                                             <div class="meta-info">${escapeHTML(item.school)}</div>
                                         </div>
                                     </div>
