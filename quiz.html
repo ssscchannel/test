@@ -30,14 +30,19 @@
                 linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
             background-size: 30px 30px;
             color: var(--text-bright);
-            height: 100vh;
+            /* 關鍵升級：改用 100dvh 完美貼合手機實際可視範圍 */
+            height: 100vh; /* 舊版瀏覽器備用 */
+            height: 100dvh; 
             display: flex; justify-content: center; align-items: center;
             overflow: hidden;
         }
 
         /* Game Container */
         .game-container {
-            width: 95%; max-width: 600px; height: 90vh;
+            width: 95%; max-width: 600px; 
+            /* 關鍵升級：改用 95% 繼承安全高度，並加上最大高度限制避免大螢幕過度拉長 */
+            height: 95%; 
+            max-height: 800px;
             background: var(--panel-bg);
             border-radius: 15px;
             border: var(--border-glow);
@@ -71,6 +76,16 @@
         .content-area {
             flex: 1; overflow-y: auto; padding: 20px;
             display: flex; flex-direction: column; gap: 20px;
+            /* 關鍵防護：強制約束 Flex 子元素，絕對禁止內容撐破機台底線 */
+            min-height: 0;
+            /* 加入手機底部安全區域的計算，防止導覽列干擾選項 */
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            /* 隱藏捲軸維持科幻沉浸感 */
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
+        }
+        .content-area::-webkit-scrollbar {
+            display: none;
         }
 
         /* Question */

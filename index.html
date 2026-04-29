@@ -108,9 +108,10 @@
 
         /* --- Screen System --- */
         .screen {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            position: absolute; top: 0; bottom: 0; left: 0; right: 0; /* 將四周絕對鎖死 */
             display: none; flex-direction: column;
-            overflow-y: auto; padding: 20px; box-sizing: border-box;
+            overflow: hidden; /* 關鍵修改：禁止最外層滾動 */
+            padding: 20px; box-sizing: border-box;
         }
         .screen.active { display: flex; }
 
@@ -276,6 +277,22 @@
         }
         .back-btn:hover { background: var(--neon-blue); color: var(--bg-main); }
         
+        #list-content {
+            flex: 1; /* 自動填滿下方所有剩餘空間 */
+            overflow-y: auto; /* 讓清單擁有獨立的內部滾動能力 */
+            min-height: 0; /* 關鍵：防止內容過多撐破外層容器 */
+    
+            /* 針對手機下方安全區域 (Safe Area) 與導覽列的終極防線 */
+            padding-bottom: calc(50px + env(safe-area-inset-bottom)); 
+    
+            /* 隱藏捲軸，維持科幻介面乾淨感 */
+            scrollbar-width: none; 
+            -ms-overflow-style: none;
+        }
+        #list-content::-webkit-scrollbar {
+            display: none;
+        }
+
         .unit-card {
             background: var(--panel-bg); 
             padding: 15px 20px; 
@@ -594,7 +611,7 @@
             <button onclick="renderList('九年級')" class="filter-btn" id="btn-g9">九年級</button>
         </div>
 
-        <div id="list-content" style="padding-bottom:50px;"></div>
+        <div id="list-content"></div>
     </div>
 
     <script src="data.js"></script>
