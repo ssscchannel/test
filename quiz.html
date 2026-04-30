@@ -403,13 +403,45 @@
             fetch(`${API_URL}?action=get_quiz&unit_id=${unitId}`)
                 .then(res => res.json())
                 .then(res => {
-                    if (res.status === 'success') {
-                        currentQuestions = res.data; // 此時 data 僅包含 q_id, q, opt
+                    // 關鍵防護：必須是 success 且題目陣列長度大於 0 才算正常
+                    if (res.status === 'success' && res.data && res.data.length > 0) {
+                        currentQuestions = res.data;
                         userAnswers = new Array(currentQuestions.length).fill(null);
                         initQuickNav();
                         loadQuestion(0);
                         startTimer();
+                    } else {
+                        // 異常或空題庫的情況：顯示未建置畫面
+                        document.getElementById('timer-text').style.display = 'none'; // 隱藏右上角計時器
+                        document.querySelector('.footer').style.display = 'none'; // 隱藏底部 上一題/下一題 導覽列
+                
+                        const optsArea = document.getElementById('options-area');
+                        if(optsArea) optsArea.innerHTML = ''; // 清空可能殘留的選項區
+                
+                        // 渲染科幻風的施工中提示與返回按鈕
+                        loadingText.innerHTML = `
+                            <div style="text-align:center; padding: 40px 10px; display:flex; flex-direction:column; align-items:center;">
+                                <div style="font-size: 3.5rem; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(255, 0, 153, 0.5));">🚧</div>
+                                <h3 style="color:var(--neon-pink); letter-spacing: 2px; text-shadow: 0 0 5px var(--neon-pink); margin-top: 0;">該星區尚未開放</h3>
+                                <p style="color:var(--text-dim); line-height: 1.6; margin-bottom: 30px;">
+                                    挑戰者，此測驗單元的戰術資料庫尚在建置中。<br>請稍後再回來挑戰！
+                                </p>
+                                <a href="index.html" class="nav-btn btn-home" style="display:inline-block; padding: 12px 40px; font-weight:bold;">返回大廳 ➜</a>
+                            </div>
+                        `;
                     }
+                })
+                .catch(err => {
+                    // 追加網路異常處理，防止斷線卡死
+                    loadingText.innerHTML = `
+                        <div style="text-align:center; padding: 40px 10px; display:flex; flex-direction:column; align-items:center;">
+                            <div style="font-size: 3.5rem; margin-bottom: 15px;">📡</div>
+                            <h3 style="color:var(--wrong); text-shadow: 0 0 5px var(--wrong);">連線訊號中斷</h3>
+                            <p style="color:var(--text-dim);">無法連接到雲端中樞，請確認網路狀態後重試。</p>
+                            <a href="index.html" class="nav-btn btn-home" style="display:inline-block; margin-top:20px; padding: 12px 40px;">返回大廳 ➜</a>
+                        </div>
+                    `;
+                    console.error("Fetch Error:", err);
                 });
         }
 
