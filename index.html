@@ -124,13 +124,29 @@
         .header-left { display: flex; align-items: center; gap: 15px; }
         .logo-img { height: 50px; width: auto; border-radius: 8px; border: 1px solid var(--neon-blue); box-shadow: var(--glow-blue); }
         
-        .user-info { font-size: 1.2rem; font-weight: bold; color: var(--neon-blue); text-shadow: 0 0 5px rgba(0, 243, 255, 0.5); }
+        .user-info { 
+            font-size: 1.2rem; font-weight: bold; color: var(--neon-blue); text-shadow: 0 0 5px rgba(0, 243, 255, 0.5); 
+            /* 增加行高，確保換行時不會壓到下方的學校資訊 */
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+        /* 針對包覆 姓名+徽章 的 span 進行 Flex 佈局升級 */
+        #display-name {
+            display: inline-flex;
+            flex-wrap: wrap; /* 允許空間不足時自動換行 */
+            align-items: center;
+            row-gap: 5px; /* 換行時的上下間距 */
+        }
         .user-detail { font-size: 0.9rem; color: var(--text-dim); }
         
         .logout-btn {
             background: transparent; border: 1px solid var(--text-dim);
             color: var(--text-dim); padding: 5px 15px; border-radius: 20px;
             cursor: pointer; font-size: 0.9rem; transition: 0.3s;
+            /* 關鍵加入：絕對不換行、不縮水，並保持左側安全距離 */
+            white-space: nowrap; 
+            flex-shrink: 0; 
+            margin-left: 10px;
         }
         .logout-btn:hover { border-color: var(--neon-pink); color: var(--neon-pink); box-shadow: var(--glow-pink); }
 
@@ -378,10 +394,10 @@
         /* 1. 徽章容器：讓多個徽章保持水平排列，並與左側暱稱保持適當間距 */
         .badge-container {
             display: inline-flex;
+            flex-wrap: wrap; /* 讓徽章本身也能整齊換行 */
             align-items: center;
-            gap: 8px; /* 徽章之間的間距 */
-            margin-left: 8px; /* 與暱稱的距離 */
-            vertical-align: middle;
+            gap: 6px; 
+            margin-left: 8px;
         }
 
         /* 2. 徽章主體：控制合適的微縮比例，作為微縮標籤的定位基準 */
@@ -815,8 +831,16 @@
 
         function updateUserInfo() {
             if (!currentUser) return;
-            // 改用 innerHTML 並呼叫 generateBadgesHTML 渲染專屬徽章
-            document.getElementById('display-name').innerHTML = `${escapeHTML(currentUser.name)} ${generateBadgesHTML(currentUser.badges)}`;
+    
+            // 獲取使用者資訊容器
+            const userInfoEl = document.querySelector('.user-info');
+    
+            // 重構結構：將 Hi 和 姓名 鎖在一個 span (name-group) 內，徽章放在外面
+            userInfoEl.innerHTML = `
+                <span class="name-group">Hi, <span id="display-name">${escapeHTML(currentUser.name)}</span></span>
+                ${generateBadgesHTML(currentUser.badges)}
+            `;
+    
             document.getElementById('display-school').innerText = currentUser.school || "未知單位";
             document.getElementById('display-nick').innerText = currentUser.nickname || "代號不明";
         }
